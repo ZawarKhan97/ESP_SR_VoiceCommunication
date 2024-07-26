@@ -17,13 +17,10 @@
 #include "esp_wn_iface.h"
 #include "esp_wn_models.h"
 #include "dl_lib_coefgetter_if.h"
-// #include "esp_afe_sr_iface.h"
 #include "esp_afe_sr_models.h"
 #include "esp_mn_iface.h"
 #include "esp_mn_models.h"
-// #include "esp_board_init.h"
 #include "model_path.h"
-// #include "ringbuf.h"
 #include "esp_nsn_models.h"
 #include "model_path.h"
 #include "main.h"
@@ -40,10 +37,8 @@ void feed_Task(void *arg)
     esp_afe_sr_data_t *afe_data = arg;
     int audio_chunksize = afe_handle->get_feed_chunksize(afe_data);
     int nch = afe_handle->get_total_channel_num(afe_data);
-    // afe_handle->enable_aec(afe_data);
-    // int feed_channel = esp_get_feed_channel();
     
-    int feed_channel=2;
+    int feed_channel=1;
     assert(nch <= feed_channel);
 
     printf("Audio Chunk Size feed: %d\n", audio_chunksize);
@@ -53,11 +48,8 @@ void feed_Task(void *arg)
         return;
     }
 
-    // // assert(i2s_buff);
     while (true) {
       
-        // esp_get_feed_data(false, i2s_buff, audio_chunksize * sizeof(int16_t) * feed_channel);
-        // memcpy(i2s_buff, convert_audio_data(&audio_data[offSet],scaleFactor*audio_chunksize*2*sizeof(int8_t)), scaleFactor*audio_chunksize  * sizeof(int16_t));
         if(PLAY_RM)
         {
         memcpy(i2s_buff, convert_audio_data(&audio_data[offSet],audio_chunksize*2*sizeof(int8_t)), audio_chunksize  * sizeof(int16_t));
@@ -80,20 +72,19 @@ void feed_Task(void *arg)
         free(i2s_buff);
         i2s_buff = NULL;
     }
-    // vTaskDelete(NULL);
 }
 
 void play_Task(void *arg)
-{  size_t offset=0;
-   size_t bytes_written;
-   size_t count=0;
-    esp_afe_sr_data_t *afe_data = arg;
-    // afe_handle->enable_aec(afe_data);
-    int afe_chunksize = afe_handle->get_fetch_chunksize(afe_data);
-    printf("Audio Chunk Size: %d\n", afe_chunksize);
+{  
+  size_t offset=0;
+  size_t bytes_written;
+  size_t count=0;
+  esp_afe_sr_data_t *afe_data = arg;
+  int afe_chunksize = afe_handle->get_fetch_chunksize(afe_data);
+  printf("Audio Chunk Size: %d\n", afe_chunksize);
     
-    int16_t *buff = malloc(afe_chunksize * sizeof(int16_t));
-    assert(buff);
+  int16_t *buff = malloc(afe_chunksize * sizeof(int16_t));
+  assert(buff);
 
     while (true) 
     {
@@ -101,7 +92,6 @@ void play_Task(void *arg)
 
         if (res && res->ret_value != ESP_FAIL) {
             memcpy(&buff[offset], res->data, afe_chunksize * sizeof(int16_t));
-            // esp_audio_play(buff, scaleFactor*afe_chunksize, portMAX_DELAY);
             // Adjust volume
             // adjust_volume(buff, afe_chunksize, 0.25);
             
@@ -132,8 +122,7 @@ void audio_loop_play_back_Task(void *arg)
    size_t offset=0;
    
   int16_t *i2s_buff = malloc(BUFFER_LENGTH * sizeof(int16_t) );
-  // int16_t *left_channel = malloc(BUFFER_LENGTH * sizeof(int16_t));
-    if (i2s_buff == NULL) {
+  if (i2s_buff == NULL) {
         printf("Failed to allocate memory for i2s_buff\n");
         return;
     }
@@ -162,19 +151,6 @@ void audio_loop_play_back_Task(void *arg)
       xRingbufferSend(ring_buffer, (void *)i2s_buff, bytes_read, portMAX_DELAY);
     }
     
-    // extract_left_channel(i2s_buff, left_channel, bytes_read / sizeof(int16_t));
-    // if(PRINT)
-    // {
-    //        // Write to I2S
-    //     for (size_t i = 0; i < bytes_read /(2*sizeof(int16_t)); ++i) {
-    //         printf("%d ", left_channel[i]);
-    //     }
-    //     printf("\n");
-    // }
-     // Adjust volume for left channel
-    // adjust_volume(left_channel, bytes_read / sizeof(int16_t) / 2, 0.5);
-  // i2s_write(I2S_PORT,(void *)left_channel, bytes_read/2, &bytes_written, portMAX_DELAY);
-
       // Check if ring buffer is filled with at least twice the buffer length
         if (xRingbufferGetCurFreeSize(ring_buffer) <= RING_BUFFER_SIZE / 2) {
             size_t item_size;
@@ -185,15 +161,11 @@ void audio_loop_play_back_Task(void *arg)
                 vRingbufferReturnItem(ring_buffer, (void *)data);
             }
         }
-
-    // i2s_write(I2S_SPK_NUM,(void *)i2s_buff, bytes_read, &bytes_written, portMAX_DELAY);
-    // printf("Bytes written to I2S: %d\n", bytes_written);
-    }
+}
 
 
 if (i2s_buff) {
         free(i2s_buff);
-        // free(left_channel);
         i2s_buff = NULL;
     }
     vTaskDelete(NULL);
@@ -206,7 +178,6 @@ void app_main()
     gpio_set_level(GPIO_NUM_8, 0);
 
     printf("Multiplayer Started!\n");
-    // printf("Free heap size: %ln bytes\n", (int32_t*)esp_get_free_heap_size());
     i2s_init();
     // Initialize AFE Handler
     afe_handle = (esp_afe_sr_iface_t *)&ESP_AFE_VC_HANDLE;
@@ -218,7 +189,7 @@ void app_main()
     }
 
     afe_config_t afe_config = AFE_CONFIG_DEFAULT();
-    afe_config.aec_init = true;
+    afe_config.aec_init = false;
     afe_config.se_init = false;  // Speech enhancement
     afe_config.vad_init = true;
     afe_config.wakenet_init = false;
@@ -226,9 +197,9 @@ void app_main()
     afe_config.voice_communication_agc_init=true;
     afe_config.voice_communication_agc_gain=50;
     afe_config.agc_mode=AFE_MN_PEAK_AGC_MODE_3;
-    afe_config.pcm_config.total_ch_num = 2;
-    afe_config.pcm_config.mic_num = 1;
-    afe_config.pcm_config.ref_num = 1;
+    afe_config.pcm_config.total_ch_num = 1;
+    afe_config.pcm_config.mic_num = 0;
+    afe_config.pcm_config.ref_num = 0;
     // // config for nsnet
     afe_config.afe_ns_mode = NS_MODE_NET;
     afe_config.afe_ringbuf_size=15;
@@ -245,6 +216,7 @@ void app_main()
     xTaskCreatePinnedToCore(&play_Task, "Play Audio", 8 * 1024, (void*)afe_data, 5, NULL, 1);
     xTaskCreatePinnedToCore(&feed_Task, "feed Audio", 8 * 1024, (void*)afe_data, 5, NULL, 0);
     // xTaskCreatePinnedToCore(&audio_loop_play_back_Task, "Loop_Back_Audio_for_Test", 8 * 1024, NULL, 5, NULL, 1);
+    
     // printf("destroy\n");
     // afe_handle->destroy(afe_data);
     // afe_data = NULL;
@@ -336,10 +308,4 @@ void adjust_volume(int16_t *buffer, size_t length, float volume_factor) {
     }
 }
 // Function to extract left channel
-void extract_left_channel(const int16_t *interleaved_buffer, int16_t *left_channel, size_t length) {
-    for (size_t i = 0; i < length / 2; i++) {
-        // left_channel[i] = interleaved_buffer[2 * i];
-        left_channel[i] = interleaved_buffer[2 * i+1];
-    }
-}
 
