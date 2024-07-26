@@ -1,0 +1,56 @@
+# Build folders
+/build/
+.build/
+sdkconfig
+sdkconfig.old
+
+# CMake build files
+CMakeLists.txt.user
+CMakeCache.txt
+cmake_install.cmake
+
+# VS Code files
+.vscode/
+
+# Eclipse files
+.project
+.cproject
+.settings/
+
+# CLion files
+.idea/
+cmake-build-debug/
+
+# Executable files
+*.elf
+*.bin
+*.map
+*.hex
+
+# Object files
+*.o
+*.obj
+
+# Libraries
+*.a
+
+# Log files
+*.log
+
+# Other
+.DS_Store
+*.pyc
+__pycache__/
+*.log
+*.bak
+*.swp
+
+# Python virtual environment
+venv/
+
+# Additional user-specified folders
+.devcontainer/
+.dependencies/
+lock/
+managed/
+components/
