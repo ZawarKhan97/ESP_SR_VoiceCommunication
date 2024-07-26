@@ -52,5 +52,4 @@ venv/
 .devcontainer/
 .dependencies/
 lock/
-managed/
-components/
+managed_components/
