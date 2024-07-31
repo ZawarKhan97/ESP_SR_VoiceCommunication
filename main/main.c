@@ -37,8 +37,11 @@ void feed_Task(void *arg)
     esp_afe_sr_data_t *afe_data = arg;
     int audio_chunksize = afe_handle->get_feed_chunksize(afe_data);
     int nch = afe_handle->get_total_channel_num(afe_data);
-    
-    int feed_channel=1;
+    #ifdef SINGLE_MIC
+      int feed_channel=1;
+    #else
+      int feed_channel=2;
+    #endif
     assert(nch <= feed_channel);
 
     printf("Audio Chunk Size feed: %d\n", audio_chunksize);
@@ -93,7 +96,7 @@ void play_Task(void *arg)
         if (res && res->ret_value != ESP_FAIL) {
             memcpy(&buff[offset], res->data, afe_chunksize * sizeof(int16_t));
             // Adjust volume
-            // adjust_volume(buff, afe_chunksize, 0.25);
+            // adjust_volume(buff, afe_chunksize, 20);
             
             i2s_write(I2S_SPK_NUM, buff, afe_chunksize* sizeof(int16_t), &bytes_written, portMAX_DELAY);
              
@@ -189,20 +192,33 @@ void app_main()
     }
 
     afe_config_t afe_config = AFE_CONFIG_DEFAULT();
-    afe_config.aec_init = false;
+    #ifdef SINGLE_MIC
+      afe_config.aec_init = false;
+    #else
+      afe_config.aec_init = true;
+    #endif
     afe_config.se_init = false;  // Speech enhancement
-    afe_config.vad_init = true;
+    afe_config.vad_init = false;
     afe_config.wakenet_init = false;
     afe_config.voice_communication_init = true;
     afe_config.voice_communication_agc_init=true;
-    afe_config.voice_communication_agc_gain=50;
-    afe_config.agc_mode=AFE_MN_PEAK_AGC_MODE_3;
-    afe_config.pcm_config.total_ch_num = 1;
-    afe_config.pcm_config.mic_num = 0;
-    afe_config.pcm_config.ref_num = 0;
-    // // config for nsnet
-    afe_config.afe_ns_mode = NS_MODE_NET;
-    afe_config.afe_ringbuf_size=15;
+    afe_config.voice_communication_agc_gain=25;
+    /*This Clips the input voice peak amplitude, if Voice greater than -9dB. Uncomment it if you want High volume audio
+    to be suppressed*/
+    // afe_config.agc_mode=AFE_MN_PEAK_AGC_MODE_1;
+    #ifdef SINGLE_MIC
+      afe_config.pcm_config.total_ch_num = 1;
+      afe_config.pcm_config.mic_num = 1;
+      afe_config.pcm_config.ref_num = 0;
+    #else
+      afe_config.pcm_config.total_ch_num = 2;
+      afe_config.pcm_config.mic_num = 1;
+      afe_config.pcm_config.ref_num = 1;
+    #endif
+
+    // config for nsnet
+    afe_config.afe_ns_mode = NS_MODE_SSP;
+    // afe_config.afe_ringbuf_size=15;
     afe_config.memory_alloc_mode=AFE_MEMORY_ALLOC_INTERNAL_PSRAM_BALANCE;
     // char *nsnet_name = esp_srmodel_filter(models, ESP_NSNET_PREFIX, NULL);
     // afe_config.afe_ns_model_name = nsnet_name;
@@ -255,8 +271,11 @@ void app_main()
     .mode= (I2S_MODE_MASTER | I2S_MODE_RX ),
     .sample_rate=SAMPLE_RATE,
     .bits_per_sample= 16,
-    .channel_format=I2S_CHANNEL_FMT_RIGHT_LEFT,
-    // .channel_format=I2S_CHANNEL_FMT_RIGHT_LEFT,
+    #ifdef SINGLE_MIC
+      .channel_format=I2S_CHANNEL_FMT_ONLY_RIGHT,
+    #else
+      .channel_format=I2S_CHANNEL_FMT_RIGHT_LEFT,
+    #endif
     .communication_format=(i2s_comm_format_t)(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
     // .communication_format=(i2s_comm_format_t)(I2S_COMM_FORMAT_PCM_SHORT),
     .intr_alloc_flags=ESP_INTR_FLAG_LEVEL1,

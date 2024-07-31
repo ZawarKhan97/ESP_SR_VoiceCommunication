@@ -16,7 +16,7 @@
 #define I2S_WS_MIC  11
 #define I2S_SD_MIC  10
 #define I2S_SCK_MIC 12
-
+// #define SINGLE_MIC
 // /*Pins for MIC PCM Connecto*/
 // #define I2S_WS_MIC  10
 // #define I2S_SD_MIC  11
